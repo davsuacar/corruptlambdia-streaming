@@ -7,11 +7,20 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 object CorruptCounterStreaming extends App {
 
   val conf = new SparkConf().setMaster("local[2]").setAppName("CorruptCounterStreaming")
-  val sc = new StreamingContext(conf, Seconds(3))
+  val sc = new StreamingContext(conf, Seconds(10))
 
-  val logFile = "src/main/resources/papers.csv"
+  val logFile = "src/main/resources"
   val file = sc.textFileStream(logFile)
 
-  file.print()
+  val corruptPaymentRDD = file.map(x => {
+    val arr = x.split(",")
+    new CorruptPayment(arr(0), Integer.parseInt(arr(1)), Integer.parseInt(arr(2)))
+  })
 
+  corruptPaymentRDD.map(x => (x.name, x.payment)).reduceByKey(_ + _)
+
+  corruptPaymentRDD.print()
+
+  sc.start()
+  sc.awaitTermination()
 }
